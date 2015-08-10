@@ -1,0 +1,11 @@
+#! /bin/sh
+# gets request file  from  the refDB and saves it in current dir
+
+if [ ${1:-} ]; then
+  request_num=$1
+  wget -O FILE${request_num} "http://cmsdoc.cern.ch/cms/production/www/cgi/data/DAR_Info.php?DARFileID=${request_num}"
+else
+  echo  "USAGE: get_request <request number>";
+  exit;
+fi
+

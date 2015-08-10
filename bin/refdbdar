@@ -1,0 +1,52 @@
+#! /usr/bin/env python2.2
+#pylint: disable-msg=W0403
+# RefDB2DAR interface in python 
+# Created:  April, 15-17, 2003  NR
+# Modified: June, 2003 
+# ( set execution  mode )
+"""
+RefDB2DAR2 interface in python 
+"""
+__revision__ = "$Id: refdbdar,v 1.2 2005/10/06 12:05:35 ratnik Exp $"
+__version__ = "$Revision: 1.2 $"
+
+import os
+import sys
+
+# Add DAR modules to python internal search path:
+program=os.path.realpath(sys.argv[0])
+modulesDir = os.path.join( os.path.dirname(os.path.dirname(program)),
+                           'src/DAR')
+
+sys.path.append( modulesDir )
+
+from refdbdar import RefDBDAR
+from Utils import notWritable
+#from Utils import infoOut, setDarVersion, darVersionInFile, stop
+#from Utils import banner, setVerbose, getDarVersion, strong
+#from Utils import convertDAR2DAR2, DARInternalError, readConfigFile
+
+# Get RefDB input from input file given as an argument:
+try:
+    inputfile=sys.argv[1]
+except:
+    sys.exit("Please specify input file")
+try:
+    tmpdir=sys.argv[2]
+except:
+    sys.exit("Please specify temporary build directory as second argument")
+
+if not os.path.exists(inputfile):
+    sys.exit("File does not exist: "+inputfile )
+if notWritable (tmpdir):
+    sys.exit(notWritable(tmpdir))
+# Absolutize tmpdir path if  needed
+if not os.path.isabs(tmpdir):
+    tmpdir = os.path.abspath(tmpdir)
+
+r=RefDBDAR(tmpdir, program)     # Initialize refdbdar
+print "Going to parse  request file ", inputfile
+r.parseRequest(inputfile)
+r.packager.buildApplications()
+r.packager.createDistribution()
+r.saveLog()

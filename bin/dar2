@@ -1,0 +1,205 @@
+#! /usr/bin/env python2.2
+#pylint: disable-msg=W0403
+"""
+DAR - Distribution After Release - Version 2.0 - tool for packaging applications
+into binary distributions based on runtime environment 
+"""
+__revision__ = "$Id: dar2,v 1.1.1.1 2005/09/28 02:04:23 ratnik Exp $"
+__version__ = "$Revision: 1.1.1.1 $"
+
+import os
+import sys
+import getopt
+
+programPath = os.path.dirname( os.path.realpath(sys.argv[0] ) ) 
+programName = os.path.basename( sys.argv[0] )
+
+# Add DAR modules to python internal search path:
+modulesDir = os.path.join( os.path.dirname(programPath), 'src/DAR' )
+
+sys.path.append( modulesDir )
+sys.path.append( programPath )
+
+from Manager import  Manager
+from Platform import Platform
+from Utils import infoOut, setDarVersion, darVersionInFile, stop
+from Utils import banner, setVerbose, getDarVersion, strong
+from Utils import convertDAR2DAR2, DARInternalError, usageError, readConfigFile
+
+#from DAR.Request import 
+
+##########################################
+# Set defaults: 
+##########################################
+darConfigFile = os.environ['HOME'] + '/.darrc/config'
+# some defaults can be put here to be used if dar config file is missing:
+config = {}
+testmode = None
+mode = None
+ignore = None
+
+# Set DAR version:
+setDarVersion( darVersionInFile( programPath + '/../src/dar_version'  )  )
+
+##########################################
+def usage(  ) :
+    """
+    Prints out usage help
+    """
+    # Require only minimum arguments and take necessary values 
+    # from the configuration.
+    # To do: allow additional optional argument in the command line
+    # to override the default configuration values.
+
+    #print getDarVersion(  ) 
+    print """
+SYNOPSIS:
+To create DARball:
+    """ + programName + """  -c  <spec file> 
+
+To install DARball:
+    """ + programName + """  -i  <DARball>  <installDir>
+
+OPTIONS:
+   -h          - print this help and exit
+   -h help     - more help  /only partly supported/
+   -v          - display version number
+   -n          - run in test mode /skip execution/
+   -q          - less output /really quiet/
+   -b base     - specifies base for incremental distributions
+"""
+
+def helpHelp(  ) :
+    """ extended help  on  help  command """
+    print """ To get information on a specific topic:
+    """ + programName + """ -h commands        - commands used in Request file
+    """ + programName + """ -h config          - configurable values
+    """ + programName + """ -h help            - this help
+    """ + programName + """ -h                 - general usage help
+    """
+        
+##########################
+# Here actions start.
+##########################
+setVerbose(1)
+banner(  ) 
+##########################################
+# Handle options and arguments:
+##########################################
+base = None
+try:
+    opts, args = getopt.getopt( sys.argv[1:], "cihvnqf:b:" ) 
+except getopt.error:
+    usageError( sys.exc_info()[1], programName) 
+
+if not opts:
+    usage()
+    sys.exit()
+
+for o, a in opts:
+    if o == "-q":
+        setVerbose(None)  # really quiet
+    if o == "-n":
+        testmode = "on"
+        infoOut(" Runs in TEST mode.")
+    if o == "-v":
+        print getDarVersion() 
+        sys.exit()
+    if o == "-h":
+        if not args:
+            usage()
+        else:
+            # Allow extra argument to specify help topic:            
+            if args[0] == 'commands':
+                import Request                
+                if len( args ) >1:
+                    for cmd in Request.DARcommand.supportedCommands:
+                        if cmd == args[1]:
+                            print Request.DARcommand.__dict__[cmd + 'Help']
+                else:
+                    print "DAR supported commands:"
+                    for cmd in Request.DARcommand.supportedCommands:
+                        print "       " + cmd
+            elif args[0] == 'config':
+                Manager.configHelp()
+            elif args[0] == 'help':
+                helpHelp()
+            else:
+                helpHelp()
+        sys.exit()
+    if o == "-i":
+        mode = "install"
+    if o == "-c":
+        mode = "create"
+    if o == "-b":
+        base = a
+        infoOut("using base distribution " + a)
+    if o == "-f":
+        ignore = a
+        if not os.path.isfile(a):
+            usageError( "file " + a + " does not exists!", programName)
+    
+if not mode:
+    usageError("one of -c, -i options is mandatory", programName)
+
+# Require an argument :
+if not args:
+    usageError("Please specify an argument!  ", programName)
+
+##########################################
+# Get platform information:
+##########################################
+platform = Platform(  )   # checks current platform
+
+##########################################
+# Perform dar actions according to mode:
+##########################################
+# Prepare darInput  for Manager:
+# For backward compatibility with the dar version 1
+
+# rdarwish
+# convertDAR2DAR2 wants three arguments
+# the last one is just the program name
+darInput = convertDAR2DAR2( args[0], mode, programName ) 
+
+# !!! NR: This is a temporary work around. In future convertDAR2DAR2 or  !!!
+# !!! even better mechanism for passing options should take care of this !!!
+# Add a base in install mode:
+
+if base is not None:
+    darInput.append("use dar base " + base) 
+
+if mode == "create":
+##########################################
+    # Read in general dar configuration:
+##########################################
+    if os.path.isfile( darConfigFile ) :
+        readConfigFile( darConfigFile , config) 
+    else:
+        print strong( "WARNING: " )  + "Please create your dar config file!"    
+    # Initializing  manager for creation request:
+    manager = Manager( darInput, cnf=config, pltf=platform ) 
+    infoOut( "Creating DAR distribution" ) 
+    if testmode:
+        manager.prepareDistribution( 'link' ) 
+    else:
+        manager.prepareDistribution( 'copy' )     
+    manager.checkCriteria(  ) 
+    manager.saveAndQuit(  ) 
+
+elif mode == "install":
+    # Get installation directory from the second argument:
+    if len( args )  < 2:
+        usageError( 'Insufficient arguments', programName ) 
+    installDir = args[1]
+
+    # Provide default configuration  (to be fixed later):
+    config['dar_shared_pool'] = installDir
+    config['dar_dist_pool'] = installDir
+    config['dar_inst_pool'] = installDir
+    config['dar_tmp_dir'] = installDir
+    # Initializing  manager for installation request:
+    manager = Manager( darInput, cnf=config, pltf=platform ) 
+    manager.installApplication( installDir, testmode ) 
+else:
+    DARInternalError( 'in dar2 : mode should be install or create. ' ) 

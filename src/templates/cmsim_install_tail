@@ -1,0 +1,93 @@
+geom_tarname="geometry.tar.gz"
+cmdb_path=${inst_dir}/cmsim/cmdb
+cern_path=${inst_dir}/cern/$cernlib_vers
+cmsversion_rt_path=${inst_dir}/cmsim/${cmsim_version}
+
+# Start unpacking.
+# The order is significant !
+
+echo "Installing cmsim version $cmsim_version";
+echo "      in $inst_dir ";
+echo "";
+
+# Unpack the externals 
+
+echo "Unpacking cmdb database";
+if [ -d $cmdb_path ] 
+then 
+    echo "WARNING: cms database installation directory already exists!"
+    echo "Check the cmdb_unpack_errors file for possible collisions"
+fi
+tar -C $inst_dir -xzf ${kit_path}/cmsim_cmdb.tar.gz 2> `pwd`/cmdb_unpack_errors
+
+echo "Unpacking cernlib $cernlib_vers ...";
+
+if [ -d $cern_path ]; then 
+    echo "WARNING: cern installation already exists"
+    echo "         in $cern_path "
+    echo "Check the cern_unpack_errors file for possible collisions"
+fi
+tar -C $inst_dir -xzf ${kit_path}/cernlibs.tgz 2> `pwd`/cern_unpack_errors
+
+# Unpack the cmsim sources and libraries.
+
+echo "Unpacking $cmsim_version libraries ...";
+tar -C $inst_dir -xzf ${kit_path}/${cmsim_version}_lib_*.tar.gz
+
+echo "Unpacking $cmsim_version sources ...";
+tar -C $inst_dir -xzf ${kit_path}/${cmsim_version}_src.tar.gz
+
+# The tar file should contain only the file, the path is now defined by $geom_path
+
+echo "Unpacking geometry file ... ";
+tar -C $inst_dir -xzf ${kit_path}/$geom_tarname
+
+# Unpack the applications
+
+echo "Unpacking $cmsim_version executables ...";
+tar -C $inst_dir -xzf ${kit_path}/${cmsim_version}_execs.tar.gz
+
+echo "";
+
+# Environment scripts
+echo "Creating general runtime environment for $cmsim_version :";
+echo "";
+
+# Here we imply the following: 
+# the executables after unpacking get into the  $inst_dir/<application>/EXECUTABABLES sub-directories;
+# the runtime environment scripts will be created like this: $inst_dir/<application>/<application>_env.sh
+
+
+# Create the general runtime environment script for the cmsim version: 
+
+${kit_path}/convert_env $kit_path $inst_dir $cmsim_version $cernlib_vers
+echo "";
+
+#Get application names and create application specific runtime environment scripts:
+echo "";
+
+echo "Creating runtime environment for applications :";
+echo "";
+
+#applications=`find $inst_dir  -type d -name EXECUTABLES`
+## find is unsafe as it can overwrite previously installed applications
+## using explicitly predefined list of applications:
+
+for appl_path in $applications; do
+    appl_name=`perl -e '@str=split /\//, $ARGV[0]; print $str[($str-2)] . "\n"' $appl_path` ;
+    appl_stem="${inst_dir}/${appl_name}/${appl_name}_env";
+    
+    echo "source ${cmsversion_rt_path}/${cmsim_version}_env.csh" > ${appl_stem}.csh;
+    echo "setenv PATH $appl_path:\$PATH;" >> ${appl_stem}.csh;
+    echo "Created ${appl_stem}.csh";
+
+    echo ". ${cmsversion_rt_path}/${cmsim_version}_env.sh" > ${appl_stem}.sh;
+    echo "export PATH=$appl_path:\$PATH;" >> ${appl_stem}.sh;
+    echo "Created ${appl_stem}.sh";
+done
+if [ $? -eq 0 ]
+then
+    echo "";
+    echo "* * * * * Installation completed * * * * *";
+    echo "";
+fi

@@ -1,0 +1,5 @@
+dar_shared_pool=/uscms/prod/grid/dar2/dist
+dar_dist_pool=/uscms/prod/grid/dar2/dist
+dar_inst_pool=/uscms/prod/grid/dar2/inst
+dar_tmp_dir=/home/rdarwish/WORK/TESTS/TMP
+

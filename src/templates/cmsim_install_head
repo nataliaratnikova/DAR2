@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+#
+# cmsim_install 
+#    - unpacks cmsim distribution and installs runtime environment
+#      scripts in the installation directory given as an argument.
+# 
+#################################################################
+# Get script name and path
+
+script_name(){
+ perl -e '@cmd=split /\//, $ARGV[0]; print $cmd[($cmd-1)] . "\n"' $0 ;
+}
+script_path(){
+ perl -e 'use Cwd;$_=$ARGV[0];/(.*?)($ARGV[1])$/;$p=$1;print (cwd."/") unless (m|^/|);print ($p."\n");' $0 `script_name`;
+}
+
+if [ $# -ne 1 ]; then 
+ echo "USAGE: `script_name` <installation_directory>";
+ exit;
+fi
+
+# Existence check:
+if [ ! -d $1 ]; then 
+ echo "ERROR: $1 does not exist";
+ echo "USAGE: $0 <installation_directory>"; 
+ exit;
+fi
+
+kit_path="`script_path`"; 
+
+# Get the absolute path for the installaion directory:
+
+inst_dir=`perl -e 'use Cwd; $d = $ARGV[0];$_="none";($_=cwd."\n")if(chdir $d);print;' $1`
+

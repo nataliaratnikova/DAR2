@@ -1,0 +1,20 @@
+6 Oct 2005
+V2_0_0_pre3 :  refdbdar tested with request  #107 (OSCAR_3_9_8).
+
+Minor changes compare to  V2_0_0_pre2:
+ bin/refdbdar        - allow relative path in second argument (tmpdir)
+ src/DAR/Packager.py - Removed architecture from  the versiontag name. 
+                       This rudimental feature was used when dar did 
+                       not have an architecture directory sublevel 
+ doc                 - temporarily removed until update is ready
+
+---
+27 Sep 2005 
+This is a first version of DAR-2 committed to the CERN OCTOPUS 
+repository.
+
+It contains DAR2 source code, documentation and examples.
+It also includes RefDb-DAR interface, and DAR API for MCPS.
+Executables can be found in bin/ directory. 
+--
+Contact: Natalia Ratnikova  <natasha@fnal.gov>

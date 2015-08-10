@@ -1,0 +1,70 @@
+#!/usr/bin/env python
+
+# This small example shows how one can utilize the DAR-2 API to create, build and install packages
+
+# The following code is a stripped down version of the tasks that the DAR-2 frontend script
+# performs to accomplish the same task
+
+# import standard modules
+import sys
+import os
+
+# Add DAR modules to python internal search path:
+sys.path.append( os.path.join( os.path.dirname( os.path.realpath(sys.argv[0] ) ), '../DAR' ) )
+sys.path.append( os.path.dirname( os.path.realpath(sys.argv[0] ) )  )
+
+# To install an incremental distribution, you must utilize a Manager object from Manager.py
+from Manager import Manager
+
+# Import misc. utility methods
+from Utils import readConfigFile, convertDAR2DAR2
+
+# Information about the platform
+# we are running on
+from Platform import Platform
+
+# You will need to let DAR-2 know about some information. Namely, the directories
+# in which to place its finished product. This should be specified in a config file
+# (default ~/.darrc/config)
+# This file should have the following information
+##dar_shared_pool=/home/rdarwish/WORK/TESTS/DIST
+##dar_dist_pool=/home/rdarwish/WORK/TESTS/DIST
+##dar_inst_pool=/home/rdarwish/WORK/TESTS/INST
+##dar_tmp_dir=/home/rdarwish/WORK/TESTS/TMP
+darConfigFile = os.environ['HOME'] + '/.darrc/config'
+
+# And you will need a place to store the configuration
+config = {}
+
+# Since this is an incremental installation, we need to specify a base installation
+baseInstallation = "/home/rdarwish/WORK/TESTS/INST/COBRA_8_1_0"
+
+# Specify an incremental installation package
+installPackage = "/home/rdarwish/WORK/TESTS/DIST/COBRA_8_1_0_incremental.tar.gz"
+
+# And a directory to install the distribution to
+# this should be the top level installation directory of
+# the base distribution
+installDir = "/home/rdarwish/WORK/TESTS/INST"
+
+# A variable defining the platform we are running under
+platform = Platform()
+
+# Then, read in the configuration and store it in config
+readConfigFile(darConfigFile, config)
+
+# Gather the input that will define our procedure.
+# This method needs the spec file info, the
+# mode to run in (in this case it is 'install') and the name
+# of the program being run
+darInput = convertDAR2DAR2(installPackage, 'install', sys.argv[0])
+
+# And tell DAR about the base installation location
+darInput.append("use dar base " + baseInstallation)
+
+#  Create a manager to 'manage' the operation
+manager = Manager( darInput, cnf=config, pltf=platform ) 
+
+# And finally, install the application
+manager.installApplication( installDir )
+

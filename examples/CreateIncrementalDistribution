@@ -1,0 +1,82 @@
+#!/usr/bin/env python
+
+import sys
+import os
+
+# Add DAR modules to python internal search path:
+sys.path.append( os.path.join( os.path.dirname( os.path.realpath(sys.argv[0] ) ), '../DAR' ) )
+sys.path.append( os.path.dirname( os.path.realpath(sys.argv[0] ) )  )
+
+# To create an incremental distribution, you must utilize a Manager object from Manager.py
+from Manager import Manager
+
+# Import misc. utility methods
+from Utils import readConfigFile, convertDAR2DAR2
+
+from Platform import Platform
+
+# This small example shows how one can utilize the DAR-2 API to create, build and install packages
+# To create an incremental distribution, you will need to set up a spec file. You must know the base
+# of the installed distribution. With this information, a spec file is very simple. Here is an example
+# of the bare minimum necessary to create an incremental DAR ball.
+#
+#########################################################################
+#     Example incremental distribution creation specification file
+#########################################################################
+# use scram rte /path/to/satellite/directory
+# use dar tagname <user defined name of resulting incremental distribution>
+# use dar base <PROJECT_BASE>
+#
+# With some actual values:
+# use scram rte /home/rdarwish/WORK/PACKAGES/ORCA_8_7_3
+# use dar tagname 873_incremental
+# use dar base ORCA_8_7_3_dar.tar.gz
+#
+#########################################################################
+# The following code is a stripped down version of the tasks that the DAR-2 frontend script
+# performs to accomplish the same task
+# Now, specify the file to use
+specFile = "Create_COBRA_8_1_0_incr.spec"
+
+# You will need to let DAR-2 know about some information. Namely, the directories
+# in which to place its finished product. This should be specified in a config file
+# (default ~/.darrc/config)
+# This file should have the following information
+##dar_shared_pool=/home/rdarwish/WORK/TESTS/DIST
+##dar_dist_pool=/home/rdarwish/WORK/TESTS/DIST
+##dar_inst_pool=/home/rdarwish/WORK/TESTS/INST
+##dar_tmp_dir=/home/rdarwish/WORK/TESTS/TMP
+darConfigFile = os.environ['HOME'] + '/.darrc/config'
+
+# And you will need a place to store the configuration
+config = {}
+
+# A variable defining the platform we are running under
+platform = Platform()
+
+# Then, read in the configuration and store it in config
+readConfigFile(darConfigFile, config)
+
+# Gather the input that will define our procedure.
+# This method needs the spec file info, the
+# mode to run in (in this case it is 'create') and the name
+# of the program being run
+darInput = convertDAR2DAR2(specFile, 'create', sys.argv[0])
+
+#  Create a manager to 'manage' the operation
+manager = Manager( darInput, cnf=config, pltf=platform ) 
+
+# Now you are ready to create the distribution
+# If  you want to run in test mode, simply give
+# prepareDistribution the keyword 'link'
+manager.prepareDistribution('copy')
+
+# After it is done, you may check that everything went as
+# expected by calling checkCriteria
+# At the moment, this call does not perform very rigorous
+# testing of the built environment, but will definitely
+# change to produce some robust testing of the package
+manager.checkCriteria()
+
+# And finally, save the DAR ball and exit the program
+manager.saveAndQuit()

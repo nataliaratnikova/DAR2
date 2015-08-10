@@ -1,0 +1,97 @@
+#! /usr/bin/env python2.2
+# Written by  N. Ratnikova  23 Feb 2005
+#
+# new_pre_release
+#       - script to be used for creation of a new pre-release.
+#	Applies next prerelease tag to the DAR source code.
+#	Updates dar_version file in the "released_versions" branch.
+#	Head revision stays unchanged.
+#
+##########################################################
+import re
+import os
+import sys
+import string 
+
+script_path=os.path.dirname(os.path.abspath(sys.argv[0])) 
+script_name = os.path.basename(sys.argv[0])
+
+branch_tag_name='released_versions'
+vers_file='src/dar_version'
+
+print  "DAR version file: \n   ", vers_file
+
+# Get  the top of the source code tree,  assuming that this script  is one level deeper
+# (in the DAR/config directory):
+
+source_tree_top=string.join (string.split(script_path,'/')[:-2], '/')
+print  "DAR source tree top: \n   ", source_tree_top
+
+# Import  DAR utilities:
+sys.path.append(source_tree_top+'/src/DAR')
+from Utils import Session, stop
+
+# Start new shell session:
+s=Session()
+s.run('cd '+source_tree_top)[1] or sys.exit('could not  chdir to '+source_tree_top)
+
+# Source code should be up-to-date:
+(output, stat)=s.run('cvs -nq update') 
+
+if output :
+    print  "WARNING: source code is not fully up-to-date:"
+    print "        ", string.join(output,'        ')
+    print "Uncommitted changes may be not included into the pre-release."
+    ans=raw_input("Are you sure you want to continue? (y/n)")
+    if not (ans == 'y' or ans=='Y'):
+        sys.exit('Exiting...')
+
+# Update dar version file to the branch:
+
+s.run('cvs update -r '+branch_tag_name+' '+vers_file)
+
+# Get the latest tag
+pattern=re.compile('V(\d+)_(\d+)_(\d+)_pre(\d+)')
+out,stat=s.run('cvs  status  -v '+vers_file)
+top_tag=[]
+for line in out:
+    # split into words:
+    words=string.split(line)
+    if words:
+        result=pattern.match(string.strip(words[0]))
+        if result:
+            tag=[]
+            for num in result.groups():
+                tag.append(int(num))
+            print  "Tag :", tag
+            if tag> top_tag:
+                top_tag=tag
+
+if not top_tag:
+    print "ERROR: Could not find previous prerelease tag for file\n"+\
+          source_tree_top + "/" + vers_file  
+    sys.exit(1)
+    
+print  "Top tag numbers", top_tag
+
+# Change to the next tag and commit to the branch
+
+new_tag = 'V' + string.join(
+    [ str(top_tag[0]),
+      str(top_tag[1]),
+      str(top_tag[2]),
+      'pre'+str(top_tag[3]+1)],
+    '_')
+
+print "New tag :", new_tag
+fo=open(os.path.join(source_tree_top,vers_file),'w')
+fo.write(new_tag+'\n')
+fo.close()
+
+s.run('cvs ci -m "Changed version  number for a new  pre-release'+new_tag+'" '+vers_file)
+
+# Apply tag to the whole source tree:
+s.run('cvs tag '+new_tag)
+# Close  session
+del s
+
